@@ -48,7 +48,20 @@ export default function JobsPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [query]);
+  useEffect(() => {
+    // Wait until Mirage (mock API) is running to avoid fetching the /jobs page HTML
+    if (typeof window !== 'undefined' && !(window as any)._mirageRunning) {
+      let tries = 0;
+      const id = setInterval(() => {
+        if ((window as any)._mirageRunning || tries++ > 60) { // ~3s max
+          clearInterval(id);
+          load();
+        }
+      }, 50);
+      return () => clearInterval(id);
+    }
+    load();
+  }, [query]);
 
   function toSlug(v: string) {
     return v.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
