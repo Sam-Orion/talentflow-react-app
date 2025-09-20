@@ -19,7 +19,10 @@ export default function CandidateProfile({ params }: { params: { id: string } })
       const found = (d.data as Candidate[]).find((c) => c.id === cid) || null;
       setCandidate(found);
     }).catch(() => setCandidate(null));
-    fetch(`/candidates/${cid}/timeline`).then((r) => r.json()).then(setTimeline).catch(() => setTimeline([]));
+    fetch(`/candidates/${cid}/timeline`).then((r) => r.json()).then((events: Event[]) => {
+      // ensure newest-first in UI
+      setTimeline([...events].sort((a, b) => b.at - a.at));
+    }).catch(() => setTimeline([]));
   }, [cid]);
 
   const query = useMemo(() => {
@@ -55,7 +58,7 @@ export default function CandidateProfile({ params }: { params: { id: string } })
       if (!res.ok) throw new Error('failed');
       // reload timeline to ensure order
       const fresh = await fetch(`/candidates/${cid}/timeline`).then((r) => r.json());
-      setTimeline(fresh);
+      setTimeline([...fresh].sort((a: Event, b: Event) => b.at - a.at));
     } catch {
       setTimeline(prev);
       setNoteText(trimmed);
@@ -119,7 +122,19 @@ export default function CandidateProfile({ params }: { params: { id: string } })
                   {e.type === 'stage_change' ? (
                     <span>Moved from <b>{e.from ?? '—'}</b> to <b>{e.to ?? '—'}</b> on {new Date(e.at).toLocaleString()}</span>
                   ) : (
-                    <span>Note: {e.note}</span>
+                    <span>
+                      Note: {e.note && (
+                        <>
+                          {e.note.split(/(\@[a-zA-Z0-9._-]+)/g).map((part, i) =>
+                            part.startsWith('@') ? (
+                              <span key={i} className="font-medium text-primary">{part}</span>
+                            ) : (
+                              <span key={i}>{part}</span>
+                            )
+                          )}
+                        </>
+                      )}
+                    </span>
                   )}
                 </li>
               ))}
