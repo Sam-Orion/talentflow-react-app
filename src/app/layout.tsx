@@ -5,6 +5,7 @@ import ErrorReporter from "@/components/ErrorReporter";
 import Script from "next/script";
 import Link from "next/link";
 import AppProviders from "./providers";
+import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -43,6 +44,7 @@ export default function RootLayout({
         <AppProviders>
           {children}
         </AppProviders>
+        <Toaster richColors />
         <VisualEditsMessenger />
       </body>
     </html>

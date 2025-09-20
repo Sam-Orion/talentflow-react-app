@@ -1,82 +1,82 @@
-'use client';
-import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+"use client";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
-interface Job { id: number; title: string; slug: string; status: 'active'|'archived'; tags: string[]; order: number }
-interface JobsResponse { data: Job[]; page: number; pageSize: number; total: number; pages: number }
+interface Job { id: number; title: string; status: "active"|"archived"; slug: string; tags: string[]; order: number; createdAt: number; updatedAt: number }
+interface Page<T> { items: T[]; total: number; page: number; pageSize: number }
 
-export default function AssessmentsPage() {
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<string>('');
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
-  const [resp, setResp] = useState<JobsResponse | null>(null);
+export default function AssessmentsIndex() {
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(false);
-
-  const query = useMemo(() => {
-    const params = new URLSearchParams();
-    if (search) params.set('search', search);
-    if (status) params.set('status', status);
-    params.set('page', String(page));
-    params.set('pageSize', String(pageSize));
-    params.set('sort', 'order');
-    return `/jobs?${params.toString()}`;
-  }, [search, status, page, pageSize]);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
-    setLoading(true);
-    fetch(query).then((r) => r.json()).then((d: JobsResponse) => setResp(d)).finally(() => setLoading(false));
-  }, [query]);
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true); setError(null);
+      // wait for Mirage to be ready
+      const start = Date.now();
+      try {
+        while (typeof window !== "undefined" && !(window as any)._mirageRunning && Date.now() - start < 3000) {
+          await new Promise(r => setTimeout(r, 50));
+        }
+        const res = await fetch(`/jobs?page=1&pageSize=100&status=active`);
+        if (!res.ok) throw new Error("Failed");
+        const data: Page<Job> = await res.json();
+        if (!cancelled) setJobs(data.items);
+      } catch (e) {
+        if (!cancelled) setError("Failed to load jobs");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return jobs;
+    return jobs.filter(j => j.title.toLowerCase().includes(q) || j.slug.toLowerCase().includes(q));
+  }, [jobs, search]);
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl mx-auto">
+    <main className="mx-auto max-w-6xl px-4 py-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Assessments</h1>
-        <Button asChild size="sm"><Link href="/">Back</Link></Button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Input placeholder="Search jobs" value={search} onChange={(e) => { setPage(1); setSearch(e.target.value); }} />
-        <Select value={status} onValueChange={(v) => { setPage(1); setStatus(v === 'any' ? '' : v); }}>
-          <SelectTrigger>
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="any">Any</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="archived">Archived</SelectItem>
-          </SelectContent>
-        </Select>
-        <div className="text-sm text-muted-foreground flex items-center">{resp ? `Total jobs: ${resp.total}` : ' '}</div>
+      <div className="flex items-center gap-3">
+        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search jobs…" className="max-w-sm" />
       </div>
 
-      {loading && <div className="text-sm text-muted-foreground">Loading…</div>}
+      {loading && <div className="text-sm text-muted-foreground">Loading jobs…</div>}
+      {error && <div className="text-sm text-red-600">{error}</div>}
 
-      <ul className="divide-y rounded-md border">
-        {resp?.data.map((j) => (
-          <li key={j.id} className="p-4 flex items-center justify-between gap-4">
-            <div>
-              <Link href={`/jobs/${j.id}`} className="font-medium hover:underline">{j.title}</Link>
-              <div className="text-xs text-muted-foreground">/{j.slug} • {j.status}</div>
-            </div>
-            <div className="flex items-center gap-2">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {filtered.map((j) => (
+          <Card key={j.id}>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between text-base">
+                <span>{j.title}</span>
+                <span className="text-xs px-2 py-0.5 rounded bg-secondary text-secondary-foreground">{j.status}</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between">
+              <div className="text-xs text-muted-foreground">Slug: {j.slug}</div>
               <Button asChild size="sm"><Link href={`/assessments/${j.id}`}>Open Builder</Link></Button>
-            </div>
-          </li>
+            </CardContent>
+          </Card>
         ))}
-        {!loading && resp && resp.data.length === 0 && (
-          <li className="p-6 text-sm text-muted-foreground">No jobs found.</li>
-        )}
-      </ul>
-
-      <div className="flex items-center justify-between">
-        <Button size="sm" variant="outline" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1 || loading}>Prev</Button>
-        <div className="text-sm text-muted-foreground">Page {resp?.page ?? page} of {resp?.pages ?? '…'}</div>
-        <Button size="sm" variant="outline" onClick={() => setPage((p) => (resp ? Math.min(resp.pages, p + 1) : p + 1))} disabled={loading || (resp ? page >= resp.pages : false)}>Next</Button>
       </div>
-    </div>
+
+      {!loading && !error && filtered.length === 0 && (
+        <div className="text-sm text-muted-foreground">No jobs found.</div>
+      )}
+    </main>
   );
 }

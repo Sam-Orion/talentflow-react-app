@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { toast } from '@/components/ui/sonner';
 
 // Types matching our DB
 type QuestionType = 'single' | 'multi' | 'short' | 'long' | 'numeric' | 'file';
@@ -63,8 +64,9 @@ export default function AssessmentBuilder({ params }: { params: { jobId: string 
     try {
       const res = await fetch(`/assessments/${jobId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
       if (!res.ok) throw new Error('Save failed');
+      toast.success('Assessment saved');
     } catch (e) {
-      // no-op UI error handling for brevity
+      toast.error('Failed to save assessment');
     } finally {
       setSaving(false);
     }
@@ -107,14 +109,16 @@ export default function AssessmentBuilder({ params }: { params: { jobId: string 
   const submitResponse = async () => {
     const errs = validate();
     if (errs.length > 0) {
-      alert('Please fix errors:\n' + errs.join('\n'));
+      toast.error('Please fix the form', { description: errs.join('\n') });
       return;
     }
     try {
       await fetch(`/assessments/${jobId}/submit`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ candidateId: Number(candidateId) || 1, responses: answers }) });
-      alert('Submitted locally');
+      toast.success('Response submitted locally');
       setAnswers({});
-    } catch {}
+    } catch {
+      toast.error('Failed to submit response');
+    }
   };
 
   return (
