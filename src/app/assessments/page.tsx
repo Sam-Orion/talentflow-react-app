@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 interface Job { id: number; title: string; status: "active"|"archived"; slug: string; tags: string[]; order: number; createdAt: number; updatedAt: number }
-interface Page<T> { items: T[]; total: number; page: number; pageSize: number }
+interface Page<T> { data: T[]; total: number; page: number; pageSize: number; pages: number }
 
 export default function AssessmentsIndex() {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -27,7 +27,8 @@ export default function AssessmentsIndex() {
         const res = await fetch(`/jobs?page=1&pageSize=100&status=active`);
         if (!res.ok) throw new Error("Failed");
         const data: Page<Job> = await res.json();
-        if (!cancelled) setJobs(data.items);
+        const list = Array.isArray((data as any).data) ? (data as any).data as Job[] : [];
+        if (!cancelled) setJobs(list);
       } catch (e) {
         if (!cancelled) setError("Failed to load jobs");
       } finally {
@@ -39,9 +40,10 @@ export default function AssessmentsIndex() {
   }, []);
 
   const filtered = useMemo(() => {
+    const src = Array.isArray(jobs) ? jobs : [];
     const q = search.trim().toLowerCase();
-    if (!q) return jobs;
-    return jobs.filter(j => j.title.toLowerCase().includes(q) || j.slug.toLowerCase().includes(q));
+    if (!q) return src;
+    return src.filter(j => j.title.toLowerCase().includes(q) || j.slug.toLowerCase().includes(q));
   }, [jobs, search]);
 
   return (
