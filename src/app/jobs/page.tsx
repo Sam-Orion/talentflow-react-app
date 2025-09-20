@@ -14,6 +14,7 @@ interface JobsResponse {
 export default function JobsPage() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<string>('');
+  const [tags, setTags] = useState<string>('');
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [loading, setLoading] = useState(false);
@@ -33,11 +34,12 @@ export default function JobsPage() {
     const params = new URLSearchParams();
     if (search) params.set('search', search);
     if (status) params.set('status', status);
+    if (tags.trim()) params.set('tags', tags.split(',').map(t => t.trim()).filter(Boolean).join(','));
     params.set('page', String(page));
     params.set('pageSize', String(pageSize));
     params.set('sort', 'order');
     return `/jobs?${params.toString()}`;
-  }, [search, status, page, pageSize]);
+  }, [search, status, tags, page, pageSize]);
 
   const load = () => {
     setLoading(true); setError(null);
@@ -145,11 +147,11 @@ export default function JobsPage() {
         <h1 className="text-2xl font-semibold">Jobs</h1>
         <div className="flex gap-2">
           <Button asChild size="sm"><Link href="/">Back</Link></Button>
-          <Button size="sm" variant="secondary" onClick={() => { setSearch(''); setStatus(''); setPage(1); }}>Reset</Button>
+          <Button size="sm" variant="secondary" onClick={() => { setSearch(''); setStatus(''); setTags(''); setPage(1); }}>Reset</Button>
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-4">
         <Input placeholder="Search title or slug" value={search} onChange={(e) => { setPage(1); setSearch(e.target.value); }} />
         <Select value={status} onValueChange={(v) => { setPage(1); setStatus(v === 'any' ? '' : v); }}>
           <SelectTrigger>
@@ -161,6 +163,11 @@ export default function JobsPage() {
             <SelectItem value="archived">Archived</SelectItem>
           </SelectContent>
         </Select>
+        <Input
+          placeholder="Filter tags (comma separated)"
+          value={tags}
+          onChange={(e) => { setPage(1); setTags(e.target.value); }}
+        />
         <div className="flex items-center gap-2">
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>

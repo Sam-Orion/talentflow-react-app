@@ -22,11 +22,14 @@ export function makeServer() {
         const page = parseInt(request.queryParams['page'] || '1', 10);
         const pageSize = parseInt(request.queryParams['pageSize'] || '10', 10);
         const sort = request.queryParams['sort'] || 'order';
+        const tagsParam = (request.queryParams['tags'] || '').trim();
+        const tags = tagsParam ? tagsParam.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
 
         const all = await db.jobs.toArray();
         let items = all
           .filter((j) => (status ? j.status === status : true))
-          .filter((j) => (search ? j.title.toLowerCase().includes(search) || j.slug.includes(search) : true));
+          .filter((j) => (search ? j.title.toLowerCase().includes(search) || j.slug.includes(search) : true))
+          .filter((j) => (tags.length ? j.tags.some((t) => tags.includes(t)) : true));
 
         if (sort === 'order') items.sort((a, b) => a.order - b.order);
         if (sort === 'createdAt:desc') items.sort((a, b) => b.createdAt - a.createdAt);
