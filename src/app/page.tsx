@@ -7,10 +7,29 @@ import { Button } from '@/components/ui/button';
 export default function Home() {
   const [stats, setStats] = useState<{ jobs: number | null; candidates: number | null }>({ jobs: null, candidates: null });
   useEffect(() => {
-    Promise.all([
-      fetch('/jobs?page=1&pageSize=1').then((r) => r.json()).then((d) => d.total).catch(() => 0),
-      fetch('/candidates?page=1&pageSize=1').then((r) => r.json()).then((d) => d.total).catch(() => 0),
-    ]).then(([jobs, candidates]) => setStats({ jobs, candidates }));
+    let cancelled = false;
+    const load = async () => {
+      // wait for Mirage to start
+      if (typeof window !== 'undefined') {
+        const start = Date.now();
+        while (!(window as any)._mirageRunning && Date.now() - start < 3000) {
+          await new Promise((r) => setTimeout(r, 50));
+        }
+      }
+      try {
+        const [jobs, candidates] = await Promise.all([
+          fetch('/jobs?page=1&pageSize=1').then((r) => r.json()).then((d) => d.total).catch(() => 0),
+          fetch('/candidates?page=1&pageSize=1').then((r) => r.json()).then((d) => d.total).catch(() => 0),
+        ]);
+        if (!cancelled) setStats({ jobs, candidates });
+      } catch {
+        if (!cancelled) setStats({ jobs: 0, candidates: 0 });
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
