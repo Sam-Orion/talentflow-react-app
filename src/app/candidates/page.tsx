@@ -31,10 +31,34 @@ export default function CandidatesPage() {
 
   const load = useCallback(() => {
     setLoading(true); setError(null);
-    fetch(query).then(r => r.json()).then((d: CandidatesResponse) => setResp(d)).catch(() => setError('Failed to load candidates')).finally(() => setLoading(false));
+    fetch(query)
+      .then(async (r) => {
+        const ct = r.headers.get('content-type') || '';
+        if (!r.ok || !ct.includes('application/json')) throw new Error('bad-response');
+        return r.json();
+      })
+      .then((d: CandidatesResponse) => setResp(d))
+      .catch(() => setError('Failed to load candidates'))
+      .finally(() => setLoading(false));
   }, [query]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    // Ensure Mirage mock API is running before first fetch to avoid HTML/JSON mismatch
+    const ready = typeof window !== 'undefined' && (window as any)._mirageRunning;
+    if (ready) { load(); return; }
+    let attempts = 0;
+    const iv = setInterval(() => {
+      attempts += 1;
+      if ((window as any)._mirageRunning || attempts > 60) { // ~3s max wait
+        clearInterval(iv);
+        load();
+      }
+    }, 50);
+    return () => clearInterval(iv);
+  }, [load]);
+
+  // remove redundant immediate load that could race Mirage startup
+  // useEffect(() => { load(); }, [load]);
 
   // Virtualization
   const containerRef = useRef<HTMLDivElement | null>(null);
