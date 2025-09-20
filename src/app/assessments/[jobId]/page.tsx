@@ -22,8 +22,54 @@ export default function AssessmentBuilder({ params }: { params: { jobId: string 
   const [candidateId, setCandidateId] = useState<string>('1');
 
   useEffect(() => {
-    setLoading(true); setError(null);
-    fetch(`/assessments/${jobId}`).then(r => r.json()).then((a: Assessment) => setData(a)).catch(() => setError('Failed to load assessment')).finally(() => setLoading(false));
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      // if invalid jobId, start with a blank assessment immediately
+      if (!Number.isFinite(jobId)) {
+        const blank: Assessment = { id: 0, jobId: 0, title: 'New Assessment', sections: [], updatedAt: Date.now() };
+        if (!cancelled) setData(blank);
+        setLoading(false);
+        return;
+      }
+      // wait for Mirage to boot in the browser (max ~3s)
+      if (typeof window !== 'undefined') {
+        const start = Date.now();
+        while (!(window as any)._mirageRunning && Date.now() - start < 3000) {
+          await new Promise((r) => setTimeout(r, 50));
+        }
+      }
+      try {
+        const res = await fetch(`/assessments/${jobId}`);
+        if (res.ok) {
+          const a: Assessment = await res.json();
+          if (!cancelled) setData(a);
+        } else if (res.status === 404) {
+          // Initialize a blank assessment for this job
+          const blank: Assessment = { id: jobId, jobId, title: 'New Assessment', sections: [], updatedAt: Date.now() };
+          if (!cancelled) setData(blank);
+        } else {
+          // Fallback: start with a blank assessment if any unexpected response
+          const blank: Assessment = { id: jobId, jobId, title: 'New Assessment', sections: [], updatedAt: Date.now() };
+          if (!cancelled) {
+            setData(blank);
+            toast.info('Starting a new assessment for this job');
+          }
+        }
+      } catch {
+        // Network or other failure: start with a blank assessment
+        const blank: Assessment = { id: jobId, jobId, title: 'New Assessment', sections: [], updatedAt: Date.now() };
+        if (!cancelled) {
+          setData(blank);
+          toast.info('Starting a new assessment for this job');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
   }, [jobId]);
 
   const addSection = () => {
