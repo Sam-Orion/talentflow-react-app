@@ -15,14 +15,27 @@ export default function CandidateProfile({ params }: { params: { id: string } })
   const mentionables = useMemo(() => ['hr.anne','hiring.bob','cto.alex','recruiter.sam','ops.riley'], []);
 
   useEffect(() => {
-    fetch(`/candidates?page=1&pageSize=1000`).then((r) => r.json()).then((d) => {
-      const found = (d.data as Candidate[]).find((c) => c.id === cid) || null;
-      setCandidate(found);
-    }).catch(() => setCandidate(null));
-    fetch(`/candidates/${cid}/timeline`).then((r) => r.json()).then((events: Event[]) => {
-      // ensure newest-first in UI
-      setTimeline([...events].sort((a, b) => b.at - a.at));
-    }).catch(() => setTimeline([]));
+    // wait for Mirage to boot (max ~3s) before first fetch
+    let cancelled = false;
+    const load = async () => {
+      if (typeof window !== 'undefined') {
+        const start = Date.now();
+        while (!(window as any)._mirageRunning && Date.now() - start < 3000) {
+          await new Promise((r) => setTimeout(r, 50));
+        }
+      }
+      if (cancelled) return;
+      fetch(`/candidates?page=1&pageSize=1000`).then((r) => r.json()).then((d) => {
+        const found = (d.data as Candidate[]).find((c) => c.id === cid) || null;
+        setCandidate(found);
+      }).catch(() => setCandidate(null));
+      fetch(`/candidates/${cid}/timeline`).then((r) => r.json()).then((events: Event[]) => {
+        // ensure newest-first in UI
+        setTimeline([...events].sort((a, b) => b.at - a.at));
+      }).catch(() => setTimeline([]));
+    };
+    load();
+    return () => { cancelled = true; };
   }, [cid]);
 
   const query = useMemo(() => {

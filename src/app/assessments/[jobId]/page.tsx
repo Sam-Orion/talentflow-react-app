@@ -246,7 +246,7 @@ export default function AssessmentBuilder({ params }: { params: { jobId: string 
                         {(q.type === 'single' || q.type === 'multi') && (
                           <div className="space-y-1 md:col-span-2">
                             <label className="text-xs">Options (comma separated)</label>
-                            <Input value={(q.options ?? []).join(', ')} onChange={(e) => updateQuestion(s.id, q.id, { options: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })} />
+                            <Input value={(q.options ?? []).join(', ')} onChange={(e) => updateQuestion(s.id, q.id, { options: e.target.value.split(',').map(t => t.trim()) })} />
                           </div>
                         )}
                         {(q.type === 'short' || q.type === 'long') && (
