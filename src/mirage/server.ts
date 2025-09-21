@@ -20,12 +20,18 @@ export function makeServer() {
         const searchParam = request.queryParams['search'];
         const search = Array.isArray(searchParam) ? searchParam[0] || '' : searchParam || '';
         const searchLower = search.toLowerCase();
-        const status = request.queryParams['status'] || '';
-        const page = parseInt(request.queryParams['page'] || '1', 10);
-        const pageSize = parseInt(request.queryParams['pageSize'] || '10', 10);
-        const sort = request.queryParams['sort'] || 'order';
-        const tagsParam = (request.queryParams['tags'] || '').trim();
-        const tags = tagsParam ? tagsParam.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
+        const statusParam = request.queryParams['status'];
+        const status = Array.isArray(statusParam) ? statusParam[0] || '' : statusParam || '';
+        const pageParam = request.queryParams['page'];
+        const page = parseInt(Array.isArray(pageParam) ? pageParam[0] || '1' : pageParam || '1', 10);
+        const pageSizeParam = request.queryParams['pageSize'];
+        const pageSize = parseInt(Array.isArray(pageSizeParam) ? pageSizeParam[0] || '10' : pageSizeParam || '10', 10);
+        const sortParam = request.queryParams['sort'];
+        const sort = Array.isArray(sortParam) ? sortParam[0] || 'order' : sortParam || 'order';
+        const tagsParamRaw = request.queryParams['tags'];
+        const tagsParam = Array.isArray(tagsParamRaw) ? tagsParamRaw[0] || '' : tagsParamRaw || '';
+        const tagsParamTrimmed = tagsParam.trim();
+        const tags = tagsParamTrimmed ? tagsParamTrimmed.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
 
         const all = await db.jobs.toArray();
         let items = all
@@ -112,9 +118,12 @@ export function makeServer() {
         const searchParam = request.queryParams['search'];
         const search = Array.isArray(searchParam) ? searchParam[0] || '' : searchParam || '';
         const searchLower = search.toLowerCase();
-        const stage = request.queryParams['stage'] || '';
-        const page = parseInt(request.queryParams['page'] || '1', 10);
-        const pageSize = parseInt(request.queryParams['pageSize'] || '25', 10);
+        const stageParam = request.queryParams['stage'];
+        const stage = Array.isArray(stageParam) ? stageParam[0] || '' : stageParam || '';
+        const pageParam = request.queryParams['page'];
+        const page = parseInt(Array.isArray(pageParam) ? pageParam[0] || '1' : pageParam || '1', 10);
+        const pageSizeParam = request.queryParams['pageSize'];
+        const pageSize = parseInt(Array.isArray(pageSizeParam) ? pageSizeParam[0] || '25' : pageSizeParam || '25', 10);
         let all = await db.candidates.toArray();
         if (stage) all = all.filter((c) => c.stage === stage);
         if (searchLower) all = all.filter((c) => c.name.toLowerCase().includes(searchLower) || c.email.toLowerCase().includes(searchLower));
