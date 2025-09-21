@@ -41,10 +41,21 @@ export default function CandidateProfile({ params }: { params: { id: string } })
       if (!found) throw new Error('not-found');
       setCandidate(found);
 
-      const tlRes = await fetch(`/candidates/${cid}/timeline`, { signal: ac.signal });
-      const tlCT = tlRes.headers.get('content-type') || '';
-      if (!tlRes.ok || !tlCT.includes('application/json')) throw new Error('bad-timeline');
-      const events: Event[] = await tlRes.json();
+      // Fetch timeline but tolerate 404/non-JSON by falling back to empty list
+      let events: Event[] = [];
+      try {
+        const tlRes = await fetch(`/candidates/${cid}/timeline`, { signal: ac.signal });
+        const tlCT = tlRes.headers.get('content-type') || '';
+        if (tlRes.status === 404) {
+          events = [];
+        } else if (tlRes.ok && tlCT.includes('application/json')) {
+          events = await tlRes.json();
+        } else {
+          events = [];
+        }
+      } catch {
+        events = [];
+      }
       setTimeline([...events].sort((a, b) => b.at - a.at));
       setLoading(false);
     } catch (e: any) {
