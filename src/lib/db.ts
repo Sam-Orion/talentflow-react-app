@@ -122,7 +122,7 @@ export async function ensureSeed() {
     };
   });
 
-  await db.jobs.bulkAdd(jobs);
+  await db.jobs.bulkPut(jobs);
 
   // 1000 candidates
   const candidates: Candidate[] = Array.from({ length: 1000 }).map((_, i) => {
@@ -141,7 +141,7 @@ export async function ensureSeed() {
     };
   });
 
-  await db.candidates.bulkAdd(candidates);
+  await db.candidates.bulkPut(candidates);
 
   // timeline per candidate
   const timelineEvents: CandidateTimelineEvent[] = [];
@@ -188,7 +188,7 @@ export async function ensureSeed() {
     });
     return { id: job.id, jobId: job.id, title: `${job.title} Assessment`, sections, updatedAt: now };
   });
-  await db.assessments.bulkAdd(assessments);
+  await db.assessments.bulkPut(assessments);
 
   await db.meta.put({ key: 'seeded', value: true });
 }
