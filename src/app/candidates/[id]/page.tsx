@@ -5,8 +5,8 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 interface Event { id?: number; candidateId: number; type: 'stage_change'|'note'; from?: string|null; to?: string|null; note?: string; at: number }
 interface Candidate { id: number; name: string; email: string; stage: string }
 
-export default function CandidateProfile({ params }: { params: Promise<{ id: string }> }) {
-  const [cid, setCid] = useState<number | null>(null);
+export default function CandidateProfile({ params }: { params: { id: string } }) {
+  const cid = Number(params.id);
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [timeline, setTimeline] = useState<Event[]>([]);
   const [noteText, setNoteText] = useState('');
@@ -16,16 +16,7 @@ export default function CandidateProfile({ params }: { params: Promise<{ id: str
   const [error, setError] = useState<string | null>(null);
   const mentionables = useMemo(() => ['hr.anne','hiring.bob','cto.alex','recruiter.sam','ops.riley'], []);
 
-  // Resolve params promise
-  useEffect(() => {
-    params.then(({ id }) => {
-      setCid(Number(id));
-    });
-  }, [params]);
-
   const load = useCallback(async () => {
-    if (cid === null) return;
-    
     setLoading(true);
     setError(null);
     // wait for Mirage to boot (max ~5s) before first fetch
@@ -77,7 +68,6 @@ export default function CandidateProfile({ params }: { params: Promise<{ id: str
 
   useEffect(() => {
     // guard invalid id early
-    if (cid === null) return;
     if (!Number.isFinite(cid)) {
       setCandidate(null);
       setTimeline([]);
@@ -116,7 +106,7 @@ export default function CandidateProfile({ params }: { params: Promise<{ id: str
 
   const submitNote = async () => {
     const trimmed = noteText.trim();
-    if (!trimmed || !candidate || cid === null) return;
+    if (!trimmed || !candidate) return;
     const optimistic: Event = { candidateId: cid, type: 'note', note: trimmed, at: Date.now() };
     const prev = [...timeline];
     setTimeline((t) => [optimistic, ...t]);

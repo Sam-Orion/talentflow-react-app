@@ -1,6 +1,5 @@
 import { AssessmentBuilderClient } from './builder-client';
 
-export default async function AssessmentBuilderPage({ params }: { params: Promise<{ jobId: string }> }) {
-  const { jobId } = await params;
-  return <AssessmentBuilderClient jobId={Number(jobId)} />;
+export default function AssessmentBuilderPage({ params }: { params: { jobId: string } }) {
+  return <AssessmentBuilderClient jobId={Number(params.jobId)} />;
 }

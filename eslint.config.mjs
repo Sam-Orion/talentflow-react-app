@@ -7,8 +7,7 @@ const compat = new FlatCompat({
  
 const eslintConfig = [
   ...compat.config({
-    extends: ['next'],
-    plugins: ['import'],
+    extends: ['next/core-web-vitals'],
   }),
   {
     rules: {
@@ -16,22 +15,7 @@ const eslintConfig = [
       '@next/next/no-img-element': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-unsafe-assignment': 'off',
-      '@typescript-eslint/no-unsafe-member-access': 'off',
-      '@typescript-eslint/no-unsafe-call': 'off',
-      '@typescript-eslint/no-unsafe-return': 'off',
-      '@typescript-eslint/no-unsafe-argument': 'off',
-      '@typescript-eslint/ban-ts-comment': 'off',
       'react-hooks/exhaustive-deps': 'off',
-      'import/no-unresolved': 'off',
-      'import/named': 'off',
-      'import/default': 'off',
-      'import/namespace': 'off',
-      'import/no-absolute-path': 'off',
-      'import/no-dynamic-require': 'off',
-      'import/no-self-import': 'off',
-      'import/no-cycle': 'off',
-      'import/no-useless-path-segments': 'off',
     },
   },
 ]

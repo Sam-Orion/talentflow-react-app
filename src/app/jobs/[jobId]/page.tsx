@@ -4,21 +4,12 @@ import { useEffect, useState } from 'react';
 
 interface Job { id: number; title: string; slug: string; status: 'active'|'archived'; tags: string[]; order: number }
 
-export default function JobDetailPage({ params }: { params: Promise<{ jobId: string }> }) {
-  const [id, setId] = useState<number | null>(null);
+export default function JobDetailPage({ params }: { params: { jobId: string } }) {
+  const id = Number(params.jobId);
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Resolve params promise
   useEffect(() => {
-    params.then(({ jobId }) => {
-      setId(Number(jobId));
-    });
-  }, [params]);
-
-  useEffect(() => {
-    if (id === null) return;
-    
     // Load one page and pick the job (no single get endpoint in mock, keep simple)
     fetch(`/jobs?page=1&pageSize=1000`)
       .then((r) => r.json())
