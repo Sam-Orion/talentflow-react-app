@@ -32,7 +32,6 @@ export default function CandidateProfile({ params }: { params: Promise<{ id: str
     if (typeof window !== 'undefined') {
       const start = Date.now();
       while (!(window as any)._mirageRunning && Date.now() - start < 5000) {
-        // eslint-disable-next-line no-await-in-loop
         await new Promise((r) => setTimeout(r, 50));
       }
     }
