@@ -17,7 +17,9 @@ export function makeServer() {
       // Jobs
       this.get('/jobs', async (schema, request) => {
         await ensureSeed();
-        const search = (request.queryParams['search'] || '').toLowerCase();
+        const searchParam = request.queryParams['search'];
+        const search = Array.isArray(searchParam) ? searchParam[0] || '' : searchParam || '';
+        const searchLower = search.toLowerCase();
         const status = request.queryParams['status'] || '';
         const page = parseInt(request.queryParams['page'] || '1', 10);
         const pageSize = parseInt(request.queryParams['pageSize'] || '10', 10);
@@ -28,7 +30,7 @@ export function makeServer() {
         const all = await db.jobs.toArray();
         let items = all
           .filter((j) => (status ? j.status === status : true))
-          .filter((j) => (search ? j.title.toLowerCase().includes(search) || j.slug.includes(search) : true))
+          .filter((j) => (searchLower ? j.title.toLowerCase().includes(searchLower) || j.slug.includes(searchLower) : true))
           .filter((j) => (tags.length ? j.tags.some((t) => tags.includes(t)) : true));
 
         if (sort === 'order') items.sort((a, b) => a.order - b.order);
@@ -107,13 +109,15 @@ export function makeServer() {
       // Candidates list
       this.get('/candidates', async (_schema, request) => {
         await ensureSeed();
-        const search = (request.queryParams['search'] || '').toLowerCase();
+        const searchParam = request.queryParams['search'];
+        const search = Array.isArray(searchParam) ? searchParam[0] || '' : searchParam || '';
+        const searchLower = search.toLowerCase();
         const stage = request.queryParams['stage'] || '';
         const page = parseInt(request.queryParams['page'] || '1', 10);
         const pageSize = parseInt(request.queryParams['pageSize'] || '25', 10);
         let all = await db.candidates.toArray();
         if (stage) all = all.filter((c) => c.stage === stage);
-        if (search) all = all.filter((c) => c.name.toLowerCase().includes(search) || c.email.toLowerCase().includes(search));
+        if (searchLower) all = all.filter((c) => c.name.toLowerCase().includes(searchLower) || c.email.toLowerCase().includes(searchLower));
         all.sort((a, b) => b.createdAt - a.createdAt);
         const result = paginate(all, page, pageSize);
         await sleep(200 + Math.random() * 1000);
