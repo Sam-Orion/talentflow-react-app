@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 
 interface Event { id?: number; candidateId: number; type: 'stage_change'|'note'; from?: string|null; to?: string|null; note?: string; at: number }
 interface Candidate { id: number; name: string; email: string; stage: string }
@@ -12,31 +12,66 @@ export default function CandidateProfile({ params }: { params: { id: string } })
   const [noteText, setNoteText] = useState('');
   const [showSuggest, setShowSuggest] = useState(false);
   const [cursorPos, setCursorPos] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const mentionables = useMemo(() => ['hr.anne','hiring.bob','cto.alex','recruiter.sam','ops.riley'], []);
 
-  useEffect(() => {
-    // wait for Mirage to boot (max ~3s) before first fetch
-    let cancelled = false;
-    const load = async () => {
-      if (typeof window !== 'undefined') {
-        const start = Date.now();
-        while (!(window as any)._mirageRunning && Date.now() - start < 3000) {
-          await new Promise((r) => setTimeout(r, 50));
-        }
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    // wait for Mirage to boot (max ~5s) before first fetch
+    if (typeof window !== 'undefined') {
+      const start = Date.now();
+      while (!(window as any)._mirageRunning && Date.now() - start < 5000) {
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((r) => setTimeout(r, 50));
       }
-      if (cancelled) return;
-      fetch(`/candidates?page=1&pageSize=1000`).then((r) => r.json()).then((d) => {
-        const found = (d.data as Candidate[]).find((c) => c.id === cid) || null;
-        setCandidate(found);
-      }).catch(() => setCandidate(null));
-      fetch(`/candidates/${cid}/timeline`).then((r) => r.json()).then((events: Event[]) => {
-        // ensure newest-first in UI
-        setTimeline([...events].sort((a, b) => b.at - a.at));
-      }).catch(() => setTimeline([]));
-    };
-    load();
-    return () => { cancelled = true; };
+    }
+
+    // Abort fetches if they hang > 7s
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 7000);
+
+    try {
+      const listRes = await fetch(`/candidates?page=1&pageSize=1000`, { signal: ac.signal });
+      const listCT = listRes.headers.get('content-type') || '';
+      if (!listRes.ok || !listCT.includes('application/json')) throw new Error('bad-response');
+      const d = await listRes.json();
+      const found = (d.data as Candidate[]).find((c: Candidate) => c.id === cid) || null;
+      if (!found) throw new Error('not-found');
+      setCandidate(found);
+
+      const tlRes = await fetch(`/candidates/${cid}/timeline`, { signal: ac.signal });
+      const tlCT = tlRes.headers.get('content-type') || '';
+      if (!tlRes.ok || !tlCT.includes('application/json')) throw new Error('bad-timeline');
+      const events: Event[] = await tlRes.json();
+      setTimeline([...events].sort((a, b) => b.at - a.at));
+      setLoading(false);
+    } catch (e: any) {
+      const msg = e?.name === 'AbortError' ? 'Request timed out' : (e?.message === 'not-found' ? 'Candidate not found' : 'Failed to load candidate');
+      setError(msg);
+      setLoading(false);
+    } finally {
+      clearTimeout(t);
+    }
   }, [cid]);
+
+  useEffect(() => {
+    // guard invalid id early
+    if (!Number.isFinite(cid)) {
+      setCandidate(null);
+      setTimeline([]);
+      setLoading(false);
+      setError('Invalid candidate id');
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      if (cancelled) return;
+      await load();
+    })();
+    return () => { cancelled = true; };
+  }, [cid, load]);
 
   const query = useMemo(() => {
     const at = noteText.lastIndexOf('@');
@@ -61,7 +96,7 @@ export default function CandidateProfile({ params }: { params: { id: string } })
 
   const submitNote = async () => {
     const trimmed = noteText.trim();
-    if (!trimmed) return;
+    if (!trimmed || !candidate) return;
     const optimistic: Event = { candidateId: cid, type: 'note', note: trimmed, at: Date.now() };
     const prev = [...timeline];
     setTimeline((t) => [optimistic, ...t]);
@@ -69,7 +104,6 @@ export default function CandidateProfile({ params }: { params: { id: string } })
     try {
       const res = await fetch(`/candidates/${cid}/notes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ note: trimmed }) });
       if (!res.ok) throw new Error('failed');
-      // reload timeline to ensure order
       const fresh = await fetch(`/candidates/${cid}/timeline`).then((r) => r.json());
       setTimeline([...fresh].sort((a: Event, b: Event) => b.at - a.at));
     } catch {
@@ -81,8 +115,14 @@ export default function CandidateProfile({ params }: { params: { id: string } })
   return (
     <div className="p-6 space-y-4 max-w-3xl mx-auto">
       <Link className="underline text-sm" href="/candidates">← Back to Candidates</Link>
-      {!candidate && <div className="text-sm text-muted-foreground">Loading…</div>}
-      {candidate && (
+      {loading && <div className="text-sm text-muted-foreground">Loading…</div>}
+      {!loading && error && (
+        <div className="text-sm text-red-600 flex items-center gap-3">
+          <span>{error}</span>
+          <button className="text-xs rounded border px-2 py-1" onClick={load}>Retry</button>
+        </div>
+      )}
+      {!loading && !error && candidate && (
         <div className="space-y-4">
           <div className="space-y-1">
             <h1 className="text-2xl font-semibold">{candidate.name}</h1>
